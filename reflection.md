@@ -8,6 +8,9 @@ Answer each question in 3 to 5 sentences. Be specific and honest about what actu
 - List at least two concrete bugs you noticed at the start  
   (for example: "the secret number kept changing" or "the hints were backwards").
 
+- The hints were flipped, when I put a high number it said go higher, and the vice versa for a low number
+- Additionally, normal had a smaller range than hard, making the difficulties switched
+- Another issue was that when a new game was started attemps was reset visually but did not actually change
 ---
 
 ## 2. How did you use AI as a teammate?
