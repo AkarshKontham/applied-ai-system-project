@@ -2,6 +2,8 @@ import random
 import streamlit as st
 
 def get_range_for_difficulty(difficulty: str):
+    # Fix: Normal and Hard ranges were originally switched (Normal had a wider range than Hard).
+    # Corrected together during code review so difficulties scale properly.
     if difficulty == "Easy":
         return 1, 20
     if difficulty == "Normal":
@@ -33,18 +35,20 @@ def check_guess(guess, secret):
     if guess == secret:
         return "Win", "🎉 Correct!"
 
+    # Fix: outcome labels were originally swapped — "Too High" was returned when guess < secret
+    # and "Too Low" when guess > secret. Identified and fixed together during code review.
     try:
         if guess < secret:
-            return "Too High", "📈 Go HIGHER!"
+            return "Too Low", "📈 Go HIGHER!"
         else:
-            return "Too Low", "📉 Go LOWER!"
+            return "Too High", "📉 Go LOWER!"
     except TypeError:
         g = str(guess)
         if g == secret:
             return "Win", "🎉 Correct!"
         if g < secret:
-            return "Too High", "📈 Go HIGHER!"
-        return "Too Low", "📉 Go LOWER!"
+            return "Too Low", "📈 Go HIGHER!"
+        return "Too High", "📉 Go LOWER!"
 
 
 def update_score(current_score: int, outcome: str, attempt_number: int):
@@ -92,8 +96,10 @@ st.sidebar.caption(f"Attempts allowed: {attempt_limit}")
 if "secret" not in st.session_state:
     st.session_state.secret = random.randint(low, high)
 
+# Fix: was initialized to 1 instead of 0, causing an off-by-one on first load
+# and inconsistency with the new game reset. Fixed together during code review.
 if "attempts" not in st.session_state:
-    st.session_state.attempts = 1
+    st.session_state.attempts = 0
 
 if "score" not in st.session_state:
     st.session_state.score = 0

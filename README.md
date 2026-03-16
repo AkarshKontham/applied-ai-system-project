@@ -26,12 +26,15 @@ It wrote the code, ran away, and now the game is unplayable.
 ## 📝 Document Your Experience
 
 - [ ] Describe the game's purpose.
+- The purpose of the game was to debug a number guessing tool that was generated using AI. Given the AI nature of the code, it was full of small bugs despite overall being functional. By working with the code on the back and the front end, I was able to spot several bugs and fix a few, finally developing test cases to make sure the logic was working as intended.
 - [ ] Detail which bugs you found.
+- The hints were flipped — check_guess returned "Too High" when the guess was below the secret and vice versa. The difficulty ranges were switched, with Normal being wider than Hard. Attempts was initialized to 1 instead of 0, causing an off-by-one on first load that was inconsistent with the new game reset.
 - [ ] Explain what fixes you applied.
+- Swapped the outcome labels in check_guess so "Too Low" and "Too High" correctly reflect the guess direction. Fixed get_range_for_difficulty so Easy is 1–20, Normal 1–50, and Hard 1–100. Changed the initial attempts session state value from 1 to 0 to match the new game reset.
 
 ## 📸 Demo
 
-- [ ] [Insert a screenshot of your fixed, winning game here]
+- [ ] [![alt text](image.png)]
 
 ## 🚀 Stretch Features
 
