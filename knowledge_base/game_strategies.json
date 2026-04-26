@@ -1,0 +1,62 @@
+[
+  {
+    "id": "binary_search_core",
+    "title": "Binary Search: The Optimal Strategy",
+    "content": "The optimal number guessing strategy is binary search: always guess the midpoint of your current known range. If the answer is Too High, your new maximum is guess-1. If Too Low, your new minimum is guess+1. Each guess cuts the search space in half, minimizing total guesses needed.",
+    "tags": ["strategy", "optimal", "binary search", "midpoint", "algorithm", "halve"]
+  },
+  {
+    "id": "easy_difficulty",
+    "title": "Easy Difficulty Tips (Range 1-20)",
+    "content": "Easy mode uses a range of 1 to 20 with 6 attempts. Binary search guarantees a win in at most 5 guesses (log2(20) ≈ 4.3). Start with 10. If Too High guess 5; if Too Low guess 15. Then keep halving the remaining range each turn.",
+    "tags": ["easy", "tips", "range", "1-20", "strategy", "6 attempts"]
+  },
+  {
+    "id": "normal_difficulty",
+    "title": "Normal Difficulty Tips (Range 1-50)",
+    "content": "Normal mode uses a range of 1 to 50 with 8 attempts. Binary search needs at most 6 guesses (log2(50) ≈ 5.6). Start with 25. Adjust by halving the remaining range after each Too High or Too Low feedback.",
+    "tags": ["normal", "tips", "range", "1-50", "strategy", "8 attempts"]
+  },
+  {
+    "id": "hard_difficulty",
+    "title": "Hard Difficulty Tips (Range 1-100)",
+    "content": "Hard mode uses a range of 1 to 100 with 5 attempts. Binary search needs at most 7 guesses (log2(100) ≈ 6.6), but you only have 5 attempts — so every guess must be the exact midpoint. Start with 50, then 25 or 75, then narrow precisely.",
+    "tags": ["hard", "tips", "range", "1-100", "strategy", "5 attempts", "tight budget"]
+  },
+  {
+    "id": "too_high_response",
+    "title": "Responding to 'Too High' Feedback",
+    "content": "When you receive Too High, the secret is strictly less than your guess. Update your upper bound: new_max = guess - 1. Your next guess should be the midpoint of (current_min, new_max). Never guess higher than your last Too High result.",
+    "tags": ["too high", "upper bound", "feedback", "adjustment", "next guess"]
+  },
+  {
+    "id": "too_low_response",
+    "title": "Responding to 'Too Low' Feedback",
+    "content": "When you receive Too Low, the secret is strictly greater than your guess. Update your lower bound: new_min = guess + 1. Your next guess should be the midpoint of (new_min, current_max). Never guess lower than your last Too Low result.",
+    "tags": ["too low", "lower bound", "feedback", "adjustment", "next guess"]
+  },
+  {
+    "id": "attempt_budget",
+    "title": "Managing Your Attempt Budget",
+    "content": "Every wasted guess costs you — especially on Hard (5 attempts). Always guess the midpoint, never guess near the edges of your range unless forced. With 1 attempt left, pick the exact midpoint of your remaining range for the best probability of winning.",
+    "tags": ["attempts", "budget", "limited", "management", "last attempt", "pressure"]
+  },
+  {
+    "id": "score_maximization",
+    "title": "Maximizing Your Score",
+    "content": "Score rewards efficiency: winning in 1 guess scores 80 points; in 2 guesses about 70; each extra guess reduces points by 10. Use binary search to win in as few guesses as possible. Avoid random guessing — it wastes your attempt budget and hurts your score.",
+    "tags": ["score", "points", "optimization", "efficiency", "performance"]
+  },
+  {
+    "id": "midpoint_calculation",
+    "title": "How to Calculate the Midpoint",
+    "content": "To find your next guess: midpoint = (lower_bound + upper_bound) // 2 (integer division). For example, range 1-50: guess 25. If Too High, range is 1-24: guess 12. If Too Low from 25, range is 26-50: guess 38. Always use integer division to stay within the valid range.",
+    "tags": ["midpoint", "calculation", "formula", "math", "integer division", "how to"]
+  },
+  {
+    "id": "first_guess_strategy",
+    "title": "Best First Guesses by Difficulty",
+    "content": "Start with the exact midpoint of your range for maximum information. Easy (1-20): start with 10. Normal (1-50): start with 25. Hard (1-100): start with 50. Starting with the midpoint gives you the most useful feedback regardless of what the secret number is.",
+    "tags": ["first guess", "opening move", "start", "initial", "midpoint", "easy", "normal", "hard"]
+  }
+]

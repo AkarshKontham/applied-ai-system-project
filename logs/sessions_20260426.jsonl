@@ -1,0 +1,10 @@
+{"ts": "2026-04-26T16:52:04.922701", "event": "game_start", "difficulty": "Normal", "range_low": 1, "range_high": 50}
+{"ts": "2026-04-26T16:52:24.416258", "event": "guess", "guess": 99, "outcome": "Too High", "attempts_used": 1}
+{"ts": "2026-04-26T16:52:27.382190", "event": "ai_hint", "confidence": 0.5, "quality": 1.0, "retrieved_docs": ["too_low_response", "normal_difficulty", "too_high_response"], "success": false}
+{"ts": "2026-04-26T16:52:34.804180", "event": "ai_hint", "confidence": 0.5, "quality": 1.0, "retrieved_docs": ["too_low_response", "normal_difficulty", "too_high_response"], "success": false}
+{"ts": "2026-04-26T16:52:38.811755", "event": "guess", "guess": 95, "outcome": "Too High", "attempts_used": 2}
+{"ts": "2026-04-26T16:52:40.406545", "event": "ai_hint", "confidence": 0.5, "quality": 1.0, "retrieved_docs": ["too_low_response", "normal_difficulty", "too_high_response"], "success": false}
+{"ts": "2026-04-26T16:52:49.431386", "event": "guess", "guess": 5, "outcome": "Too Low", "attempts_used": 3}
+{"ts": "2026-04-26T16:52:50.727745", "event": "ai_hint", "confidence": 0.5, "quality": 1.0, "retrieved_docs": ["too_high_response", "attempt_budget", "hard_difficulty"], "success": false}
+{"ts": "2026-04-26T16:52:55.638176", "event": "guess", "guess": 50, "outcome": "Too High", "attempts_used": 4}
+{"ts": "2026-04-26T16:52:57.552652", "event": "ai_hint", "confidence": 0.5, "quality": 1.0, "retrieved_docs": ["too_low_response", "attempt_budget", "hard_difficulty"], "success": false}

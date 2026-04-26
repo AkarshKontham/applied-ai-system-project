@@ -1,177 +1,186 @@
+"""
+Number Guessing Game with AI Strategy Assistant.
+
+Original project: a Streamlit number-guessing game used to practice
+debugging AI-generated code (Modules 1-3).
+
+Extended project: the game now includes an AI assistant powered by
+Claude + RAG that gives personalized, strategic hints based on the
+player's current game state.
+"""
+
+import os
+import re
 import random
 import streamlit as st
+from dotenv import load_dotenv
 
-def get_range_for_difficulty(difficulty: str):
-    # Fix: Normal and Hard ranges were originally switched (Normal had a wider range than Hard).
-    # Corrected together during code review so difficulties scale properly.
-    if difficulty == "Easy":
-        return 1, 20
-    if difficulty == "Normal":
-        return 1, 50
-    if difficulty == "Hard":
-        return 1, 100
-    return 1, 100
+load_dotenv()
 
+from logic_utils import get_range_for_difficulty, parse_guess, check_guess, update_score
 
-def parse_guess(raw: str):
-    if raw is None:
-        return False, None, "Enter a guess."
+# ---------------------------------------------------------------------------
+# Optional AI components — degrade gracefully when API key is absent
+# ---------------------------------------------------------------------------
+_AI_IMPORT_ERROR: str = ""
+try:
+    from ai_assistant import AIAssistant
+    from evaluator import ResponseEvaluator
+    from logger import GameSessionLogger
+    _AI_COMPONENTS_LOADED = True
+except Exception as _exc:
+    _AI_IMPORT_ERROR = str(_exc)
+    _AI_COMPONENTS_LOADED = False
 
-    if raw == "":
-        return False, None, "Enter a guess."
-
-    try:
-        if "." in raw:
-            value = int(float(raw))
-        else:
-            value = int(raw)
-    except Exception:
-        return False, None, "That is not a number."
-
-    return True, value, None
-
-
-def check_guess(guess, secret):
-    if guess == secret:
-        return "Win", "🎉 Correct!"
-
-    # Fix: outcome labels were originally swapped — "Too High" was returned when guess < secret
-    # and "Too Low" when guess > secret. Identified and fixed together during code review.
-    try:
-        if guess < secret:
-            return "Too Low", "📈 Go HIGHER!"
-        else:
-            return "Too High", "📉 Go LOWER!"
-    except TypeError:
-        g = str(guess)
-        if g == secret:
-            return "Win", "🎉 Correct!"
-        if g < secret:
-            return "Too Low", "📈 Go HIGHER!"
-        return "Too High", "📉 Go LOWER!"
-
-
-def update_score(current_score: int, outcome: str, attempt_number: int):
-    if outcome == "Win":
-        points = 100 - 10 * (attempt_number + 1)
-        if points < 10:
-            points = 10
-        return current_score + points
-
-    if outcome == "Too High":
-        if attempt_number % 2 == 0:
-            return current_score + 5
-        return current_score - 5
-
-    if outcome == "Too Low":
-        return current_score - 5
-
-    return current_score
-
-st.set_page_config(page_title="Glitchy Guesser", page_icon="🎮")
-
-st.title("🎮 Game Glitch Investigator")
-st.caption("An AI-generated guessing game. Something is off.")
-
-st.sidebar.header("Settings")
-
-difficulty = st.sidebar.selectbox(
-    "Difficulty",
-    ["Easy", "Normal", "Hard"],
-    index=1,
+AI_AVAILABLE: bool = _AI_COMPONENTS_LOADED and bool(
+    os.getenv("ANTHROPIC_API_KEY") or os.getenv("anthropic_api_key")
 )
 
-attempt_limit_map = {
-    "Easy": 6,
-    "Normal": 8,
-    "Hard": 5,
-}
+# ---------------------------------------------------------------------------
+# Page config
+# ---------------------------------------------------------------------------
+st.set_page_config(page_title="Number Guessing Game + AI Assistant", page_icon="🎮")
+
+st.title("🎮 Number Guessing Game")
+st.caption(
+    "A number-guessing game with an AI strategy assistant powered by Claude + RAG."
+    if AI_AVAILABLE
+    else "A number-guessing game. Set ANTHROPIC_API_KEY to enable the AI assistant."
+)
+
+# ---------------------------------------------------------------------------
+# Sidebar — difficulty selector + AI status
+# ---------------------------------------------------------------------------
+st.sidebar.header("⚙️ Settings")
+difficulty = st.sidebar.selectbox("Difficulty", ["Easy", "Normal", "Hard"], index=1)
+
+attempt_limit_map = {"Easy": 6, "Normal": 8, "Hard": 5}
 attempt_limit = attempt_limit_map[difficulty]
 
 low, high = get_range_for_difficulty(difficulty)
+st.sidebar.caption(f"Range: {low} – {high}")
+st.sidebar.caption(f"Max attempts: {attempt_limit}")
 
-st.sidebar.caption(f"Range: {low} to {high}")
-st.sidebar.caption(f"Attempts allowed: {attempt_limit}")
+st.sidebar.divider()
+if AI_AVAILABLE:
+    st.sidebar.success("🤖 AI Assistant: ON")
+else:
+    st.sidebar.warning("🤖 AI Assistant: OFF\nSet ANTHROPIC_API_KEY to enable.")
 
-if "secret" not in st.session_state:
+# ---------------------------------------------------------------------------
+# Session state initialisation
+# ---------------------------------------------------------------------------
+def _init_game() -> None:
+    """Reset all game-related session state."""
     st.session_state.secret = random.randint(low, high)
-
-# Fix: was initialized to 1 instead of 0, causing an off-by-one on first load
-# and inconsistency with the new game reset. Fixed together during code review.
-if "attempts" not in st.session_state:
     st.session_state.attempts = 0
-
-if "score" not in st.session_state:
     st.session_state.score = 0
-
-if "status" not in st.session_state:
     st.session_state.status = "playing"
-
-if "history" not in st.session_state:
     st.session_state.history = []
+    st.session_state.last_feedback = "No guess made yet"
+    # Track the narrowing bounds for the AI assistant
+    st.session_state.range_low = low
+    st.session_state.range_high = high
 
-st.subheader("Make a guess")
 
-st.info(
-    f"Guess a number between 1 and 100. "
-    f"Attempts left: {attempt_limit - st.session_state.attempts}"
-)
+for key in ("secret", "attempts", "score", "status", "history", "last_feedback",
+            "range_low", "range_high"):
+    if key not in st.session_state:
+        _init_game()
+        break
 
-with st.expander("Developer Debug Info"):
+# AI component instances — created once per session
+if AI_AVAILABLE:
+    if "ai_assistant" not in st.session_state:
+        try:
+            st.session_state.ai_assistant = AIAssistant()
+            st.session_state.evaluator = ResponseEvaluator()
+            st.session_state.session_logger = GameSessionLogger()
+            st.session_state.session_logger.log_game_start(
+                difficulty, st.session_state.range_low, st.session_state.range_high
+            )
+        except Exception as exc:
+            st.sidebar.error(f"AI init failed: {exc}")
+            AI_AVAILABLE = False
+
+# ---------------------------------------------------------------------------
+# Debug expander (developer view)
+# ---------------------------------------------------------------------------
+with st.expander("🔍 Developer Debug Info"):
     st.write("Secret:", st.session_state.secret)
-    st.write("Attempts:", st.session_state.attempts)
+    st.write("Attempts used:", st.session_state.attempts)
     st.write("Score:", st.session_state.score)
+    st.write("Active range:", st.session_state.range_low, "–", st.session_state.range_high)
     st.write("Difficulty:", difficulty)
-    st.write("History:", st.session_state.history)
+    st.write("Guess history:", st.session_state.history)
 
-raw_guess = st.text_input(
-    "Enter your guess:",
-    key=f"guess_input_{difficulty}"
+# ---------------------------------------------------------------------------
+# Game info banner
+# ---------------------------------------------------------------------------
+attempts_left = attempt_limit - st.session_state.attempts
+st.info(
+    f"Guess a number between **{low}** and **{high}**. "
+    f"Attempts remaining: **{attempts_left}**  |  Score: **{st.session_state.score}**"
 )
 
-col1, col2, col3 = st.columns(3)
+# ---------------------------------------------------------------------------
+# Input + action buttons
+# ---------------------------------------------------------------------------
+raw_guess = st.text_input("Enter your guess:", key=f"guess_input_{difficulty}")
+
+col1, col2 = st.columns(2)
 with col1:
     submit = st.button("Submit Guess 🚀")
 with col2:
     new_game = st.button("New Game 🔁")
-with col3:
-    show_hint = st.checkbox("Show hint", value=True)
 
+# ---------------------------------------------------------------------------
+# New Game handler
+# ---------------------------------------------------------------------------
 if new_game:
-    st.session_state.attempts = 0
-    st.session_state.secret = random.randint(1, 100)
-    st.session_state.status = "playing"
-    st.session_state.history = []
-    st.success("New game started.")
+    _init_game()
+    if AI_AVAILABLE and "session_logger" in st.session_state:
+        st.session_state.session_logger.log_game_start(
+            difficulty, st.session_state.range_low, st.session_state.range_high
+        )
+    st.success("New game started!")
     st.rerun()
 
+# ---------------------------------------------------------------------------
+# Game-over guard
+# ---------------------------------------------------------------------------
 if st.session_state.status != "playing":
     if st.session_state.status == "won":
-        st.success("You already won. Start a new game to play again.")
+        st.success("You already won this round. Press **New Game** to play again.")
     else:
-        st.error("Game over. Start a new game to try again.")
+        st.error("Game over. Press **New Game** to try again.")
     st.stop()
 
+# ---------------------------------------------------------------------------
+# Submit Guess handler
+# ---------------------------------------------------------------------------
 if submit:
     st.session_state.attempts += 1
-
     ok, guess_int, err = parse_guess(raw_guess)
 
     if not ok:
-        st.session_state.history.append(raw_guess)
+        st.session_state.attempts -= 1  # don't count invalid input
         st.error(err)
     else:
         st.session_state.history.append(guess_int)
 
-        if st.session_state.attempts % 2 == 0:
-            secret = str(st.session_state.secret)
-        else:
-            secret = st.session_state.secret
+        outcome, message = check_guess(guess_int, st.session_state.secret)
+        st.session_state.last_feedback = message
 
-        outcome, message = check_guess(guess_int, secret)
-
-        if show_hint:
-            st.warning(message)
+        # Narrow the tracked range for the AI assistant
+        if outcome == "Too High":
+            st.session_state.range_high = min(
+                st.session_state.range_high, guess_int - 1
+            )
+        elif outcome == "Too Low":
+            st.session_state.range_low = max(
+                st.session_state.range_low, guess_int + 1
+            )
 
         st.session_state.score = update_score(
             current_score=st.session_state.score,
@@ -179,21 +188,101 @@ if submit:
             attempt_number=st.session_state.attempts,
         )
 
+        if AI_AVAILABLE and "session_logger" in st.session_state:
+            st.session_state.session_logger.log_guess(
+                guess=guess_int,
+                outcome=outcome,
+                attempts_used=st.session_state.attempts,
+            )
+
         if outcome == "Win":
             st.balloons()
             st.session_state.status = "won"
             st.success(
-                f"You won! The secret was {st.session_state.secret}. "
-                f"Final score: {st.session_state.score}"
+                f"🎉 Correct! The secret was **{st.session_state.secret}**. "
+                f"Final score: **{st.session_state.score}**"
             )
+            if AI_AVAILABLE and "session_logger" in st.session_state:
+                st.session_state.session_logger.log_game_end(
+                    won=True,
+                    attempts_used=st.session_state.attempts,
+                    score=st.session_state.score,
+                )
         else:
+            st.warning(message)
             if st.session_state.attempts >= attempt_limit:
                 st.session_state.status = "lost"
                 st.error(
-                    f"Out of attempts! "
-                    f"The secret was {st.session_state.secret}. "
-                    f"Score: {st.session_state.score}"
+                    f"Out of attempts! The secret was **{st.session_state.secret}**. "
+                    f"Score: **{st.session_state.score}**"
                 )
+                if AI_AVAILABLE and "session_logger" in st.session_state:
+                    st.session_state.session_logger.log_game_end(
+                        won=False,
+                        attempts_used=st.session_state.attempts,
+                        score=st.session_state.score,
+                    )
 
+# ---------------------------------------------------------------------------
+# AI Strategy Assistant panel
+# ---------------------------------------------------------------------------
 st.divider()
-st.caption("Built by an AI that claims this code is production-ready.")
+st.subheader("🤖 AI Strategy Assistant")
+
+if not AI_AVAILABLE:
+    st.info(
+        "The AI assistant is disabled. "
+        "Add your `ANTHROPIC_API_KEY` to an `.env` file or environment variable to enable it."
+    )
+else:
+    hint_col, explain_col = st.columns([2, 1])
+
+    with hint_col:
+        if st.button("Get AI Hint ✨", disabled=(st.session_state.status != "playing")):
+            game_state = {
+                "difficulty": difficulty,
+                "range_low": st.session_state.range_low,
+                "range_high": st.session_state.range_high,
+                "attempts_used": st.session_state.attempts,
+                "attempts_left": attempt_limit - st.session_state.attempts,
+                "last_hint": st.session_state.last_feedback,
+                "score": st.session_state.score,
+                "secret_number": st.session_state.secret,  # used only for guardrail checks
+            }
+
+            with st.spinner("Thinking…"):
+                result = st.session_state.ai_assistant.get_hint(game_state)
+
+            eval_result = st.session_state.evaluator.evaluate(result["hint"], game_state)
+
+            # Display the hint
+            st.info(result["hint"])
+
+            # Metrics row
+            m1, m2, m3 = st.columns(3)
+            m1.metric("AI Confidence", f"{result['confidence']:.0%}")
+            m2.metric("Response Quality", f"{eval_result['overall_quality']:.0%}")
+            m3.metric("Strategy Present", "Yes" if eval_result["mentions_strategy"] else "No")
+
+            if result.get("retried"):
+                st.caption("↩️ Response was auto-improved (retry triggered by low quality)")
+
+            # Log the interaction
+            st.session_state.session_logger.log_ai_hint(
+                confidence=result["confidence"],
+                quality=eval_result["overall_quality"],
+                retrieved_docs=result["retrieved_docs"],
+                success=result["success"],
+            )
+
+    with explain_col:
+        if st.button("Explain Strategy 📖"):
+            with st.spinner("Loading strategy…"):
+                expl = st.session_state.ai_assistant.explain_difficulty(difficulty)
+            st.write(expl["explanation"])
+
+# ---------------------------------------------------------------------------
+# Footer
+# ---------------------------------------------------------------------------
+st.divider()
+st.caption("Built with Streamlit + Claude + RAG  ·  Applied AI Systems Project")
