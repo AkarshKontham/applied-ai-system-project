@@ -1,5 +1,11 @@
 # Number Guessing Game with AI Strategy Assistant
 
+## Video Walkthrough
+
+[Watch the Loom walkthrough](https://www.loom.com/share/255e15e7925a40c88c06e22c9f72d30d)
+
+---
+
 ## Original Project (Modules 1–3)
 
 **Original project name: Game Glitch Investigator**
